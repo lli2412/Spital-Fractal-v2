@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Synesthesia Flow v2.0</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/addons/p5.sound.min.js"></script>
+<style>
+body {margin:0;overflow:hidden;background:black;color:white;font-family:monospace;}
+#ui {position:fixed;top:10px;left:10px;z-index:10;}
+button,label{background:#222;color:#fff;padding:8px 12px;border:none;border-radius:6px;margin:4px;}
+input[type=file]{display:none;}
+</style>
+</head>
+<body>
+<div id="ui">
+  <label for="fileInput">🎧 Выбери трек</label>
+  <input id="fileInput" type="file" accept="audio/*">
+  <button id="playBtn">▶️</button>
+</div>
+
+<script>
+let sound, fft, amp, shaderFlow, started=false;
+let audioLevel=0, time=0;
+
+function preload(){
+  shaderFlow = loadShader('shader.frag');
+}
+
+function setup(){
+  createCanvas(windowWidth, windowHeight, WEBGL);
+  noStroke();
+  fft = new p5.FFT(0.8,128);
+  amp = new p5.Amplitude();
+}
+
+function draw(){
+  if(!started) { background(0); return; }
+  shaderFlow.setUniform('u_time', millis()/1000.0);
+  shaderFlow.setUniform('u_resolution',[width,height]);
+  shaderFlow.setUniform('u_amp', amp.getLevel()*3.0);
+  shaderFlow.setUniform('u_fft', fft.analyze());
+  shader(shaderFlow);
+  rect(-width/2,-height/2,width,height);
+}
+
+const fileInput=document.getElementById('fileInput');
+const playBtn=document.getElementById('playBtn');
+
+fileInput.onchange=e=>{
+  const f=e.target.files[0];
+  if(f){
+    userStartAudio();
+    if(sound) sound.stop();
+    sound = loadSound(URL.createObjectURL(f),()=>{
+      sound.play();
+      started=true;
+    });
+  }
+};
+
+playBtn.onclick=()=>{
+  if(!sound)return;
+  if(sound.isPlaying()) sound.pause(); else { userStartAudio(); sound.play(); started=true; }
+};
+
+function windowResized(){resizeCanvas(windowWidth,windowHeight);}
+</script>
+</body>
+</html>
